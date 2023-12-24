@@ -29,7 +29,7 @@ type ErrorMessage struct {
 }
 
 type Client struct {
-	Id   string // I don't think this is needed.
+	Id   string
 	Conn net.Conn
 }
 
@@ -117,14 +117,7 @@ func AddClient(client Client) {
 }
 
 func RemoveClient(clientId string) {
-	log.Println("Client list before:", clients)
 	delete(clients, clientId)
-	log.Println("Client list after:", clients)
-}
-
-// TODO update with a reciever.
-func BroadcastMessage(message string, sender *Client) {
-	// Broadcast a message to clients
 }
 
 func SendErrorMessage(message ErrorMessage, conn net.Conn) {
