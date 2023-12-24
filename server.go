@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 )
@@ -60,7 +61,10 @@ func handleConnection(conn net.Conn) {
 		buffer := make([]byte, 2048)
 		length, err := conn.Read(buffer)
 		if err != nil {
-			log.Println("Error reading to the buffer:", err)
+			if err != io.EOF {
+				log.Println("Error reading to the buffer:", err)
+			}
+			break
 		}
 
 		var message Message
@@ -80,7 +84,9 @@ func handleConnection(conn net.Conn) {
 				log.Println("Error unmarshaling user data.")
 			}
 
-			AddClient(Client{Id: userData.UserId, Conn: conn})
+			client := Client{Id: userData.UserId, Conn: conn}
+			AddClient(client)
+			defer RemoveClient(client.Id)
 		case "chatMessage":
 			log.Println("New chat message recieved.")
 			var chatMessage ChatMessage
@@ -90,8 +96,19 @@ func handleConnection(conn net.Conn) {
 				log.Println("Error unmarshaling chat message.")
 			}
 
-			// TODO do something with the message!
+			handleChatMessage(conn, chatMessage)
 		}
+	}
+}
+
+func handleChatMessage(fromConn net.Conn, msg ChatMessage) {
+	to := clients[msg.RecipientId]
+
+	msgBytes := []byte(msg.Text)
+	_, err := to.Conn.Write(msgBytes)
+	if err != nil {
+		log.Println("Error sending message:", err)
+		SendErrorMessage(ErrorMessage{Message: "Error sending message."}, fromConn)
 	}
 }
 
@@ -100,7 +117,9 @@ func AddClient(client Client) {
 }
 
 func RemoveClient(clientId string) {
+	log.Println("Client list before:", clients)
 	delete(clients, clientId)
+	log.Println("Client list after:", clients)
 }
 
 // TODO update with a reciever.
